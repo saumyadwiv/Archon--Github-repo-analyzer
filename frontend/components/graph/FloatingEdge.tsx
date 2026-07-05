@@ -63,7 +63,7 @@ const nodeSelector = (id: string) => (store: ReactFlowState) => store.nodeIntern
  *  lines take the shortest path between two nodes regardless of which side
  *  they happen to sit on — essential for non-hierarchical (Force/Folders)
  *  layouts where a target can be anywhere relative to its source. */
-export function FloatingEdge({ id, source, target, style, markerEnd, className }: EdgeProps) {
+export function FloatingEdge({ id, source, target, style, markerEnd, className }: EdgeProps & { className?: string }) {
   const sourceNode = useStore(useCallback(nodeSelector(source), [source]));
   const targetNode = useStore(useCallback(nodeSelector(target), [target]));
 

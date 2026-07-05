@@ -4,14 +4,16 @@ const logger = require('./logger');
 
 // BullMQ requires maxRetriesPerRequest: null on the connection it manages.
 function createRedisConnection(opts = {}) {
-  const connection = new IORedis({
-    host: env.redis.host,
-    port: env.redis.port,
-    password: env.redis.password,
-    maxRetriesPerRequest: null,
-    enableReadyCheck: true,
-    ...opts,
-  });
+  const sharedOptions = { maxRetriesPerRequest: null, enableReadyCheck: true, ...opts };
+
+  const connection = env.redis.url
+    ? new IORedis(env.redis.url, sharedOptions)
+    : new IORedis({
+        host: env.redis.host,
+        port: env.redis.port,
+        password: env.redis.password,
+        ...sharedOptions,
+      });
 
   connection.on('connect', () => logger.info('Redis connected'));
   connection.on('error', (err) => logger.error(`Redis error: ${err.message}`));

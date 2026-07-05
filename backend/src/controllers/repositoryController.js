@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const { enqueueAnalysis } = require('../jobs/queues');
 const cycleService = require('../services/cycleService');
+const architectureService = require('../services/architectureService');
 
 /**
  * Parses a GitHub URL into { ownerLogin, name, fullName }.
@@ -98,7 +99,27 @@ const getRepositoryGraph = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { nodes, edges } });
 });
 
-// Detected circular dependencies for the repo's latest completed analysis,
+// Higher-level "architecture" view: files grouped into layers by
+// responsibility (Routes/Controllers/Services/Models, Pages/Components/
+// Hooks/API Client, etc.) with aggregated, direction-aware layer-to-layer
+// edges — distinct from both the raw file graph and a plain folder grouping.
+const getRepositoryArchitecture = asyncHandler(async (req, res) => {
+  const repo = await Repository.findOne({ _id: req.params.id, owner: req.user._id });
+  if (!repo) throw ApiError.notFound('Repository not found');
+  if (!repo.latestAnalysisJob) throw ApiError.notFound('This repository has not been analyzed yet');
+
+  const [nodes, edges] = await Promise.all([
+    FileNode.find({ analysisJob: repo.latestAnalysisJob }).select(
+      'filePath fileName language linesOfCode fileComplexity averageComplexity inCycle'
+    ),
+    DependencyEdge.find({ analysisJob: repo.latestAnalysisJob }).select('sourcePath targetPath'),
+  ]);
+
+  const architecture = architectureService.buildArchitecture(nodes, edges);
+  res.json({ success: true, data: { architecture } });
+});
+
+
 // grouped into ordered file chains for the graph page's Cycles panel.
 const getRepositoryCycles = asyncHandler(async (req, res) => {
   const repo = await Repository.findOne({ _id: req.params.id, owner: req.user._id });
@@ -165,6 +186,7 @@ module.exports = {
   deleteRepository,
   getAnalysisStatus,
   getRepositoryGraph,
+  getRepositoryArchitecture,
   getRepositoryCycles,
   getRepositoryMetrics,
   getRepositoryMetricsHistory,

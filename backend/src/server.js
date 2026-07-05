@@ -26,12 +26,11 @@ async function main() {
   });
 
   // Free-tier hosts that only offer one long-running process type (e.g.
-  // Render's free plan has no Background Worker service — see README) can
-  // set RUN_WORKER_INLINE=true to run the BullMQ consumer in this same
-  // process instead of `npm run worker` as a separate service. Fine for a
-  // low-traffic personal deployment; once you can afford a dedicated worker,
-  // unset this and run `npm run worker` separately so CPU-heavy analysis
-  // jobs don't compete with the API for the same event loop.
+  // Render's free plan has no Background Worker service) can set
+  // RUN_WORKER_INLINE=true to run the BullMQ consumer in this same process
+  // instead of `npm run worker` as a separate service. Once you can afford
+  // a dedicated worker, unset this and run `npm run worker` separately so
+  // CPU-heavy analysis jobs don't compete with the API for the event loop.
   let worker = null;
   if (process.env.RUN_WORKER_INLINE === 'true') {
     worker = startWorker();

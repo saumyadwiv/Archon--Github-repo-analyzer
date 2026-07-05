@@ -19,6 +19,11 @@ module.exports = {
   mongoUri: required('MONGO_URI', 'mongodb://localhost:27017/archon'),
 
   redis: {
+    // Render's Key Value (and most managed Redis providers) only expose a
+    // single connection URL, e.g. redis://red-xxxxx:6379 (internal, no auth)
+    // or rediss://user:pass@host:port (external, TLS). Prefer that when
+    // present; fall back to discrete host/port/password for local dev
+    // against a plain `docker compose up` Redis.
     url: process.env.REDIS_URL || undefined,
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),

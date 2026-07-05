@@ -14,6 +14,10 @@ import type { FileGraphNodeData } from './FileGraphNode';
 
 export type LayoutMode = 'dagre' | 'force' | 'cluster';
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 export const LAYOUT_MODES: { id: LayoutMode; label: string; hint: string }[] = [
   { id: 'dagre', label: 'Tree', hint: 'Hierarchical top-down layout, ideal for smaller repos' },
   { id: 'force', label: 'Force', hint: 'Physics-based layout — tightly-coupled modules cluster together' },
@@ -111,15 +115,17 @@ function runForceSimulation(
 ) {
   // Dense graphs (hundreds of files) need proportionally more repulsion and
   // link length or they collapse into an unreadable clump — fixed constants
-  // that look fine at 30 nodes turn into a solid hairball at 300. Scale
-  // everything by how far above a "comfortable" node count (80) we are.
-  const density = Math.max(1, Math.sqrt(nodes.length / 80));
+  // that look fine at 30 nodes turn into a solid hairball at 300. sqrt
+  // scaling under-spaces genuinely large/complex repos (100s of files with
+  // heavy cross-imports), so above the comfortable baseline (80 nodes) we
+  // grow spacing a bit faster than sqrt.
+  const density = nodes.length <= 80 ? 1 : Math.pow(nodes.length / 80, 0.6);
   const scaledLinkDistance = linkDistance * density;
   const scaledCharge = chargeStrength * density;
-  const scaledIterations = Math.min(700, Math.round(iterations * Math.max(1, density * 0.85)));
+  const scaledIterations = Math.min(900, Math.round(iterations * Math.max(1, density * 0.9)));
 
-  const width = Math.max(900, Math.sqrt(nodes.length) * 240 * density);
-  const height = Math.max(700, Math.sqrt(nodes.length) * 190 * density);
+  const width = Math.max(900, Math.sqrt(nodes.length) * 300 * density);
+  const height = Math.max(700, Math.sqrt(nodes.length) * 230 * density);
 
   const simNodes: SimNode[] = nodes.map((n, i) => {
     // Seed positions on a circle so the simulation doesn't start from a
@@ -146,24 +152,26 @@ function runForceSimulation(
         .distance(scaledLinkDistance)
         .strength(0.4)
     )
-    .force('charge', forceManyBody().strength(scaledCharge))
+    // 2.2x pulled disconnected components in so hard they lost all breathing
+    // room. A slightly longer leash still stops them drifting apart forever,
+    // but leaves enough separation for the layout to read as distinct groups.
+    .force('charge', forceManyBody().strength(scaledCharge).distanceMax(scaledLinkDistance * 3.2))
     .force('collide', forceCollide(collideRadius))
     .force('center', forceCenter(width / 2, height / 2))
-    // Charge repulsion alone has nothing pulling disconnected components (or
-    // edge-less singleton files) back in, so they drift arbitrarily far from
-    // the rest of the graph — forceCenter only recenters the average
-    // position, it doesn't attract individual nodes. A mild constant pull
-    // toward either the group center (Folders mode) or the overall center
-    // (plain Force mode) keeps everything within one readable viewport.
-    .force(
-      'x',
-      forceX<SimNode>((d) => d.groupCenter?.x ?? width / 2).strength(groupCenters && groupStrength > 0 ? groupStrength : 0.06)
-    )
-    .force(
-      'y',
-      forceY<SimNode>((d) => d.groupCenter?.y ?? height / 2).strength(groupCenters && groupStrength > 0 ? groupStrength : 0.06)
-    )
     .stop();
+
+  // Nodes/components with no (or few) links only feel repulsion, so with
+  // nothing pulling them back they end up parked far from the rest of the
+  // graph — that's what made isolated files, and whole disconnected
+  // clusters, look scattered far apart in force mode. A pull toward the
+  // overall center (or the node's folder-cluster center, when clustering)
+  // keeps everything within one readable viewport. 0.22 pulled things in
+  // too tightly; 0.13 still comfortably wins against a cluster's outward
+  // push without crushing all the gaps down to nothing.
+  const gravityStrength = groupCenters && groupStrength > 0 ? groupStrength : 0.13;
+  simulation
+    .force('x', forceX<SimNode>((d) => d.groupCenter?.x ?? width / 2).strength(gravityStrength))
+    .force('y', forceY<SimNode>((d) => d.groupCenter?.y ?? height / 2).strength(gravityStrength));
 
   for (let i = 0; i < scaledIterations; i += 1) simulation.tick();
   simulation.stop();
@@ -211,7 +219,13 @@ function layoutCluster(nodes: Node<FileGraphNodeData>[], edges: Edge[], compact:
 
   const groupNames = [...groups.keys()];
   const groupCount = groupNames.length;
-  const ringRadius = Math.max(360, groupCount * 110);
+  // A ring sized only off the number of folders left big folders (dozens of
+  // files funneled into one slice) with nowhere to spread — the files just
+  // stacked up around their group's exact center and read as a clump.
+  // Factoring in the average group size gives busy folders proportionally
+  // more room on the ring.
+  const avgGroupSize = nodes.length / Math.max(1, groupCount);
+  const ringRadius = Math.max(360, groupCount * 110, avgGroupSize * 55);
   const center = { x: ringRadius + 200, y: ringRadius + 200 };
 
   const groupCenters = new Map<string, { x: number; y: number }>();
@@ -222,12 +236,18 @@ function layoutCluster(nodes: Node<FileGraphNodeData>[], edges: Edge[], compact:
     groups.get(dir)!.forEach((id) => groupCenters.set(id, { x: gx, y: gy }));
   });
 
+  // A pull strong enough to keep folders visually distinct for small repos
+  // packs a big repo's larger folders too tightly onto their single center
+  // point — ease it off as node count grows so files within a busy folder
+  // have room to fan out instead of overlapping.
+  const groupStrength = clamp(0.75 - nodes.length / 1100, 0.4, 0.75);
+
   return runForceSimulation(nodes, edges, {
     groupCenters,
-    groupStrength: 0.75,
-    linkDistance: 90,
-    chargeStrength: -220,
-    iterations: 350,
+    groupStrength,
+    linkDistance: 110,
+    chargeStrength: -320,
+    iterations: 420,
     nodeWidth: compact ? COMPACT_NODE_WIDTH : NODE_WIDTH,
     nodeHeight: compact ? COMPACT_NODE_HEIGHT : NODE_HEIGHT,
   });

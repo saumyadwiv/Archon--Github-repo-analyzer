@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Network, Loader2, MessageSquare, FileText } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { RequireAuth } from '@/components/layout/RequireAuth';
 import { Navbar } from '@/components/layout/Navbar';
+import { RepoTabNav } from '@/components/layout/RepoTabNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { HealthScoreGauge } from '@/components/metrics/HealthScoreGauge';
 import { ComplexityChart } from '@/components/metrics/ComplexityChart';
 import { HealthScoreHistoryChart } from '@/components/metrics/HealthScoreHistoryChart';
@@ -30,12 +30,25 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 function MetricsContent() {
   const { repoId } = useParams<{ repoId: string }>();
+  const router = useRouter();
   const [repo, setRepo] = useState<Repository | null>(null);
   const [metrics, setMetrics] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<MetricsHistoryPoint[]>([]);
   const [files, setFiles] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reanalyzing, setReanalyzing] = useState(false);
   const { toast } = useToast();
+
+  async function handleReanalyze() {
+    setReanalyzing(true);
+    try {
+      await repositoryApi.reanalyze(repoId);
+      router.push(`/dashboard/${repoId}`);
+    } catch (err) {
+      toast({ title: 'Could not start re-analysis', description: apiErrorMessage(err), variant: 'error' });
+      setReanalyzing(false);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -70,23 +83,7 @@ function MetricsContent() {
             </Link>
             <h1 className="font-mono text-xl font-semibold">{repo?.fullName}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href={`/dashboard/${repoId}/graph`}>
-              <Button variant="outline" size="sm">
-                <Network className="h-3.5 w-3.5" /> View graph
-              </Button>
-            </Link>
-            <Link href={`/dashboard/${repoId}/chat`}>
-              <Button variant="outline" size="sm">
-                <MessageSquare className="h-3.5 w-3.5" /> Chat
-              </Button>
-            </Link>
-            <Link href={`/dashboard/${repoId}/readme`}>
-              <Button variant="outline" size="sm">
-                <FileText className="h-3.5 w-3.5" /> README
-              </Button>
-            </Link>
-          </div>
+          <RepoTabNav repoId={repoId} active="metrics" reanalyzing={reanalyzing} onReanalyze={handleReanalyze} />
         </div>
 
         {loading && (

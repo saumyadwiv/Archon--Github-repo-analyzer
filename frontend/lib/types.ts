@@ -167,6 +167,34 @@ export interface MetricsHistoryPoint {
   createdAt: string;
 }
 
+export interface ArchitectureLayer {
+  id: string;
+  label: string;
+  tier: number | null;
+  fileCount: number;
+  totalLinesOfCode: number;
+  averageComplexity: number;
+  cycleFileCount: number;
+  files: string[];
+}
+
+export type ArchitectureEdgeDirection = 'forward' | 'backward' | 'lateral';
+
+export interface ArchitectureEdge {
+  source: string;
+  target: string;
+  direction: ArchitectureEdgeDirection;
+  weight: number;
+  sampleImports: { from: string; to: string }[];
+}
+
+export interface Architecture {
+  layers: ArchitectureLayer[];
+  edges: ArchitectureEdge[];
+  violationCount: number;
+  unclassifiedCount: number;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

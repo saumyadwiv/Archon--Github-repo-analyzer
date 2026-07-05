@@ -1,14 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import {
   ArrowLeft,
-  Network,
-  BarChart3,
-  MessageSquare,
   FileText,
   Copy,
   Download,
@@ -20,6 +17,7 @@ import {
 } from 'lucide-react';
 import { RequireAuth } from '@/components/layout/RequireAuth';
 import { Navbar } from '@/components/layout/Navbar';
+import { RepoTabNav } from '@/components/layout/RepoTabNav';
 import { Button } from '@/components/ui/button';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { aiApi, repositoryApi, apiErrorMessage } from '@/lib/api';
@@ -36,6 +34,7 @@ type RefineTurn = {
 
 function ReadmePageContent() {
   const { repoId } = useParams<{ repoId: string }>();
+  const router = useRouter();
   const [repo, setRepo] = useState<Repository | null>(null);
   const [readme, setReadme] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -43,7 +42,19 @@ function ReadmePageContent() {
   const [refineInput, setRefineInput] = useState('');
   const [refining, setRefining] = useState(false);
   const [refineTurns, setRefineTurns] = useState<RefineTurn[]>([]);
+  const [reanalyzing, setReanalyzing] = useState(false);
   const { toast } = useToast();
+
+  async function handleReanalyze() {
+    setReanalyzing(true);
+    try {
+      await repositoryApi.reanalyze(repoId);
+      router.push(`/dashboard/${repoId}`);
+    } catch (err) {
+      toast({ title: 'Could not start re-analysis', description: apiErrorMessage(err), variant: 'error' });
+      setReanalyzing(false);
+    }
+  }
 
   useEffect(() => {
     repositoryApi
@@ -114,23 +125,7 @@ function ReadmePageContent() {
             </Link>
             <h1 className="font-mono text-xl font-semibold">{repo?.fullName}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href={`/dashboard/${repoId}/graph`}>
-              <Button variant="outline" size="sm">
-                <Network className="h-3.5 w-3.5" /> Graph
-              </Button>
-            </Link>
-            <Link href={`/dashboard/${repoId}/metrics`}>
-              <Button variant="outline" size="sm">
-                <BarChart3 className="h-3.5 w-3.5" /> Metrics
-              </Button>
-            </Link>
-            <Link href={`/dashboard/${repoId}/chat`}>
-              <Button variant="outline" size="sm">
-                <MessageSquare className="h-3.5 w-3.5" /> Chat
-              </Button>
-            </Link>
-          </div>
+          <RepoTabNav repoId={repoId} active="readme" reanalyzing={reanalyzing} onReanalyze={handleReanalyze} />
         </div>
 
         {!readme ? (

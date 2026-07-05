@@ -30,6 +30,7 @@ router.post(
 
 router.post('/:id/analyze', analysisLimiter, repositoryController.reanalyzeRepository);
 router.get('/:id/graph', repositoryController.getRepositoryGraph);
+router.get('/:id/architecture', repositoryController.getRepositoryArchitecture);
 router.get('/:id/cycles', repositoryController.getRepositoryCycles);
 router.get('/:id/metrics', repositoryController.getRepositoryMetrics);
 router.get('/:id/metrics/history', repositoryController.getRepositoryMetricsHistory);

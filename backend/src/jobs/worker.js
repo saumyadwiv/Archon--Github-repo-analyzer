@@ -5,18 +5,20 @@
  * pipeline: clone -> discover files -> parse AST -> build dependency graph
  * -> detect cycles -> compute complexity -> score health -> persist.
  *
- * Run as a separate process from the API server: `npm run worker`
+ * Normally run as its own process (`npm run worker`) alongside the API
+ * server. Platforms whose free tier only offers one process type (e.g.
+ * Render's free plan has no Background Worker option) can instead set
+ * RUN_WORKER_INLINE=true and let server.js call startWorker() directly —
+ * see the require.main check at the bottom of this file.
  */
 const { Worker } = require('bullmq');
-const { connectDB } = require('../config/database');
 const { createRedisConnection } = require('../config/redis');
 const logger = require('../config/logger');
 const { runAnalysisJob } = require('../services/analysisService');
 
 const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '2', 10);
 
-async function main() {
-  await connectDB();
+function startWorker() {
   const connection = createRedisConnection();
 
   const worker = new Worker(
@@ -42,17 +44,31 @@ async function main() {
   });
 
   logger.info(`Archon analysis worker started (concurrency=${CONCURRENCY})`);
-
-  const shutdown = async (signal) => {
-    logger.info(`[worker] ${signal} received, closing gracefully...`);
-    await worker.close();
-    process.exit(0);
-  };
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  return worker;
 }
 
-main().catch((err) => {
-  logger.error(`Worker failed to start: ${err.message}`, { stack: err.stack });
-  process.exit(1);
-});
+// Standalone mode — `node src/jobs/worker.js` / `npm run worker`. This is
+// what runs on a real (paid) Background Worker service, or locally in dev.
+if (require.main === module) {
+  const { connectDB } = require('../config/database');
+
+  const main = async () => {
+    await connectDB();
+    const worker = startWorker();
+
+    const shutdown = async (signal) => {
+      logger.info(`[worker] ${signal} received, closing gracefully...`);
+      await worker.close();
+      process.exit(0);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+  };
+
+  main().catch((err) => {
+    logger.error(`Worker failed to start: ${err.message}`, { stack: err.stack });
+    process.exit(1);
+  });
+}
+
+module.exports = { startWorker };

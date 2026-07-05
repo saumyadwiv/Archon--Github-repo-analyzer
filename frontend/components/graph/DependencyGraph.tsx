@@ -30,11 +30,6 @@ const MAX_ZOOM = 3;
 // instead — ctrl+wheel / trackpad pinch is left alone so that still uses
 // React Flow's native (already well-tuned) pinch handling.
 const ZOOM_STEP_FACTOR = 1.35;
-// A plain fitView tends to leave a lot of empty margin around the graph,
-// especially now that isolated nodes no longer drift far from the main
-// cluster. Bump the zoom a bit past the natural "fit everything" level so
-// the graph fills the canvas better on first render.
-const INITIAL_ZOOM_BOOST = 1.25;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -112,21 +107,6 @@ export function DependencyGraph({
 
   const filesById = useMemo(() => new Map(files.map((f) => [f._id, f])), [files]);
 
-  // Isolated files (entry points with zero detected imports/importers, most
-  // commonly) have no link pulling them toward the rest of the graph, so
-  // they can settle far from the main mass — especially in Force mode.
-  // fitView-ing to literally every node then zooms out to include them,
-  // shrinking the actual graph down to a speck. Fit to the connected mass
-  // instead; isolated nodes still render and are reachable via the minimap.
-  const linkedNodeIds = useMemo(() => {
-    const ids = new Set<string>();
-    rfEdgesBase.forEach((e) => {
-      ids.add(e.source);
-      ids.add(e.target);
-    });
-    return ids;
-  }, [rfEdgesBase]);
-
   // --- Focus / isolation mode -----------------------------------------
   // Click a node to dim everything except it and its direct dependencies +
   // dependents (out to `hopDepth` hops). Click it again, click empty canvas,
@@ -197,79 +177,27 @@ export function DependencyGraph({
     [filesById, onSelectFile]
   );
 
-  // Stable per-node "explain" callback so its identity doesn't change every
-  // render (a fresh closure per node, every render, would itself defeat the
-  // node-data memoization below).
-  const infoClickCache = useRef(new Map<string, () => void>());
-  const getOnInfoClick = useCallback(
-    (id: string) => {
-      let fn = infoClickCache.current.get(id);
-      if (!fn) {
-        fn = () => handleInfoClick(id);
-        infoClickCache.current.set(id, fn);
-      }
-      return fn;
-    },
-    [handleInfoClick]
-  );
-
-  // --- Reference stability for hover/focus highlighting -----------------
-  // On every mouse-enter/leave we recompute which nodes/edges are
-  // highlighted. Naively `.map()`-ing a brand new object for *every* node
-  // and edge on every one of those events forces React Flow to re-render the
-  // entire graph each time the cursor crosses into a new node — on a
-  // few-hundred-node repo that shows up as a visible whole-canvas flicker.
-  // These caches keep the exact same object reference for any node/edge
-  // whose *rendered* fields didn't actually change, so only the handful of
-  // nodes/edges near the cursor ever re-render.
-  const nodeDataCache = useRef(new Map<string, FileGraphNodeData>());
   const displayNodes = useMemo(
     () =>
-      nodes.map((n) => {
-        const focusDistance = focusInfo ? focusInfo.distances.get(n.id) ?? -1 : undefined;
-        const isHoverNeighbor = hoverInfo ? hoverInfo.distances.has(n.id) : false;
-        const prev = nodeDataCache.current.get(n.id);
-        const unchanged =
-          prev &&
-          prev.compact === compact &&
-          prev.focusDistance === focusDistance &&
-          prev.isHoverNeighbor === isHoverNeighbor &&
-          prev.filePath === n.data.filePath &&
-          prev.fileName === n.data.fileName &&
-          prev.language === n.data.language &&
-          prev.averageComplexity === n.data.averageComplexity &&
-          prev.linesOfCode === n.data.linesOfCode &&
-          prev.inCycle === n.data.inCycle &&
-          prev.isEntryPoint === n.data.isEntryPoint;
-        const data: FileGraphNodeData = unchanged
-          ? prev!
-          : {
-              ...n.data,
-              compact,
-              focusDistance,
-              isHoverNeighbor,
-              onInfoClick: getOnInfoClick(n.id),
-            };
-        nodeDataCache.current.set(n.id, data);
-        return { ...n, data };
-      }),
-    [nodes, compact, focusInfo, hoverInfo, getOnInfoClick]
+      nodes.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          compact,
+          focusDistance: focusInfo ? focusInfo.distances.get(n.id) ?? -1 : undefined,
+          isHoverNeighbor: hoverInfo ? hoverInfo.distances.has(n.id) : false,
+          onInfoClick: () => handleInfoClick(n.id),
+        },
+      })),
+    [nodes, compact, focusInfo, hoverInfo, handleInfoClick]
   );
 
-  // Baseline opacity when nothing is focused or hovered — dense graphs still
-  // taper off a bit so overlapping cross-cutting imports don't turn into a
-  // solid smear, but the floor is kept high enough that connections stay
-  // clearly readable rather than fading to near-invisible hairlines.
-  // Hovering or clicking a node brings its edges back to full opacity so the
-  // underlying structure is still fully explorable.
-  // Small/medium repos stay bold (per earlier fix), but past ~150 nodes even
-  // a "moderate" opacity on every edge stacks into a solid smear once you
-  // have hundreds of them crossing the same screen area. Tapering harder for
-  // genuinely large/complex repos leans into the hover/click-focus feature
-  // below (which restores full opacity for the traced connections) as the
-  // actual way to read a dense graph, rather than trying to make "every edge
-  // visible at once" work at that scale.
-  const baselineEdgeOpacity = clamp(0.88 - rfNodesBase.length / 260, 0.15, 0.88);
+  // Baseline opacity when nothing is focused or hovered — dense graphs need
+  // to start much fainter than sparse ones, or every cross-cutting import
+  // renders on top of every other one and the graph reads as a solid smear
+  // of lines. Hovering or clicking a node brings its edges back to full
+  // opacity so the underlying structure is still fully explorable.
+  const baselineEdgeOpacity = clamp(0.42 - rfNodesBase.length / 500, 0.08, 0.42);
 
   // Dagre is a real left-to-right hierarchy, so the fixed Left/Right handles
   // line up with actual node positions and a plain straight line looks
@@ -280,33 +208,23 @@ export function DependencyGraph({
   // takes the shortest path regardless of relative node position.
   const edgeType = effectiveMode === 'dagre' ? 'straight' : 'floating';
 
-  const edgeCache = useRef(new Map<string, Edge>());
   const displayEdges = useMemo(
     () =>
       edges.map((e) => {
-        let opacity = baselineEdgeOpacity;
-        let animated = e.animated;
+        const base = { ...e, type: edgeType };
         if (focusInfo) {
           const active = focusInfo.distances.has(e.source) && focusInfo.distances.has(e.target);
-          opacity = active ? 1 : 0.05;
-          animated = active && e.animated;
-        } else if (hoverInfo) {
-          const active = hoverInfo.distances.has(e.source) && hoverInfo.distances.has(e.target);
-          opacity = active ? 1 : 0.05;
+          return {
+            ...base,
+            animated: active && e.animated,
+            style: { ...(e.style || {}), opacity: active ? 1 : 0.05 },
+          };
         }
-
-        const prev = edgeCache.current.get(e.id);
-        const unchanged =
-          prev &&
-          prev.type === edgeType &&
-          prev.animated === animated &&
-          prev.className === e.className &&
-          prev.source === e.source &&
-          prev.target === e.target &&
-          (prev.style as { opacity?: number } | undefined)?.opacity === opacity;
-        const result: Edge = unchanged ? prev! : { ...e, type: edgeType, animated, style: { ...(e.style || {}), opacity } };
-        edgeCache.current.set(e.id, result);
-        return result;
+        if (hoverInfo) {
+          const active = hoverInfo.distances.has(e.source) && hoverInfo.distances.has(e.target);
+          return { ...base, style: { ...(e.style || {}), opacity: active ? 1 : 0.05 } };
+        }
+        return { ...base, style: { ...(base.style || {}), opacity: baselineEdgeOpacity } };
       }),
     [edges, focusInfo, hoverInfo, baselineEdgeOpacity, edgeType]
   );
@@ -382,24 +300,8 @@ export function DependencyGraph({
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onPaneClick={handlePaneClick}
-        onInit={(instance) => {
-          rfInstance.current = instance;
-          // Run after the initial paint so node dimensions are measured and
-          // fitView's bounding-box math is accurate.
-          requestAnimationFrame(() => {
-            const mainMass = nodes.filter((n) => linkedNodeIds.has(n.id)).map((n) => ({ id: n.id }));
-            instance.fitView({
-              padding: 0.12,
-              duration: 0,
-              nodes: mainMass.length > 0 ? mainMass : undefined,
-            });
-            const { zoom } = instance.getViewport();
-            // zoomTo keeps the current viewport center fixed, so this just
-            // tightens the view instead of fitView's default "show every
-            // last node with generous margin" framing.
-            instance.zoomTo(clamp(zoom * INITIAL_ZOOM_BOOST, MIN_ZOOM, MAX_ZOOM), { duration: 0 });
-          });
-        }}
+        onInit={(instance) => (rfInstance.current = instance)}
+        fitView
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
         zoomOnScroll={false}
@@ -413,32 +315,21 @@ export function DependencyGraph({
         />
       </ReactFlow>
 
-      <div className="absolute right-4 top-4 flex flex-col items-end gap-1.5">
-        <div className="flex items-center gap-1.5 rounded-md border border-border bg-surface/90 p-0.5 pl-2.5 backdrop-blur">
-          <span className="text-[11px] font-medium text-muted">Mode:</span>
-          {LAYOUT_MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              title={m.hint}
-              onClick={() => setLayoutMode(m.id)}
-              className={cn(
-                'rounded-[5px] px-2.5 py-1.5 text-xs font-medium transition-all duration-150',
-                effectiveMode === m.id
-                  ? 'bg-brand text-white shadow-[0_2px_10px_-1px_rgba(110,91,255,0.7)]'
-                  : 'text-muted hover:bg-surface-2 hover:text-foreground'
-              )}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <p
-          key={effectiveMode}
-          className="max-w-[220px] animate-fade-up rounded-md border border-border bg-surface/90 px-2.5 py-1.5 text-right text-[11px] leading-snug text-muted backdrop-blur"
-        >
-          {LAYOUT_MODES.find((m) => m.id === effectiveMode)?.hint}
-        </p>
+      <div className="absolute right-4 top-4 flex items-center gap-0.5 rounded-md border border-border bg-surface/90 p-0.5 backdrop-blur">
+        {LAYOUT_MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            title={m.hint}
+            onClick={() => setLayoutMode(m.id)}
+            className={cn(
+              'rounded-[5px] px-2.5 py-1.5 text-xs font-medium transition-colors',
+              effectiveMode === m.id ? 'bg-brand text-white' : 'text-muted hover:bg-surface-2 hover:text-foreground'
+            )}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
       {compact && !focusedFile && (

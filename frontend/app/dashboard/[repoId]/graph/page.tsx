@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
+import { ArrowLeft, BarChart3, AlertTriangle, RefreshCw, Loader2, MessageSquare, FileText } from 'lucide-react';
 import { RequireAuth } from '@/components/layout/RequireAuth';
 import { Navbar } from '@/components/layout/Navbar';
-import { RepoTabNav } from '@/components/layout/RepoTabNav';
 import { DependencyGraph } from '@/components/graph/DependencyGraph';
 import { FileExplainDialog } from '@/components/graph/FileExplainDialog';
 import { CyclesDialog } from '@/components/graph/CyclesDialog';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { repositoryApi, apiErrorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
@@ -26,7 +26,6 @@ function GraphPageContent() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cycles, setCycles] = useState<CycleChain[]>([]);
   const [cyclesDialogOpen, setCyclesDialogOpen] = useState(false);
-  const [reanalyzing, setReanalyzing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -70,24 +69,40 @@ function GraphPageContent() {
             </button>
           )}
         </div>
-        <RepoTabNav
-          repoId={repoId}
-          active="graph"
-          reanalyzing={reanalyzing}
-          onReanalyze={async () => {
-            setReanalyzing(true);
-            try {
-              await repositoryApi.reanalyze(repoId);
-              // The detail page shows live socket-driven progress and
-              // redirects back here automatically once it completes —
-              // reuse that instead of leaving the user on a stale graph.
-              router.push(`/dashboard/${repoId}`);
-            } catch (err) {
-              toast({ title: 'Could not start re-analysis', description: apiErrorMessage(err), variant: 'error' });
-              setReanalyzing(false);
-            }
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <Link href={`/dashboard/${repoId}/chat`}>
+            <Button variant="outline" size="sm">
+              <MessageSquare className="h-3.5 w-3.5" /> Chat
+            </Button>
+          </Link>
+          <Link href={`/dashboard/${repoId}/metrics`}>
+            <Button variant="outline" size="sm">
+              <BarChart3 className="h-3.5 w-3.5" /> Metrics
+            </Button>
+          </Link>
+          <Link href={`/dashboard/${repoId}/readme`}>
+            <Button variant="outline" size="sm">
+              <FileText className="h-3.5 w-3.5" /> README
+            </Button>
+          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              try {
+                await repositoryApi.reanalyze(repoId);
+                // The detail page shows live socket-driven progress and
+                // redirects back here automatically once it completes —
+                // reuse that instead of leaving the user on a stale graph.
+                router.push(`/dashboard/${repoId}`);
+              } catch (err) {
+                toast({ title: 'Could not start re-analysis', description: apiErrorMessage(err), variant: 'error' });
+              }
+            }}
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Re-analyze
+          </Button>
+        </div>
       </div>
 
       <div className="relative flex-1">

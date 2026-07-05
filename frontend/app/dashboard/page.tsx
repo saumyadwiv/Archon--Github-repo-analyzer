@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { RequireAuth } from '@/components/layout/RequireAuth';
 import { Navbar } from '@/components/layout/Navbar';
 import { ImportRepoForm } from '@/components/dashboard/ImportRepoForm';
@@ -8,32 +8,8 @@ import { RepoCard } from '@/components/dashboard/RepoCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { repositoryApi, apiErrorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import type { Repository, MetricsSnapshot } from '@/lib/types';
-import { FolderGit2, GitBranch, Gauge, AlertTriangle } from 'lucide-react';
-
-function StatCard({
-  icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  accent?: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface/60 px-4 py-3.5">
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand/15 ${accent || 'text-brand-light'}`}>
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="font-mono text-lg font-semibold leading-tight">{value}</p>
-        <p className="truncate text-xs text-muted">{label}</p>
-      </div>
-    </div>
-  );
-}
+import type { Repository } from '@/lib/types';
+import { FolderGit2 } from 'lucide-react';
 
 function DashboardContent() {
   const [repos, setRepos] = useState<Repository[] | null>(null);
@@ -64,52 +40,17 @@ function DashboardContent() {
     }
   }
 
-  const stats = useMemo(() => {
-    if (!repos || repos.length === 0) return null;
-    const withMetrics = repos
-      .map((r) => (typeof r.latestMetricsSnapshot === 'object' ? (r.latestMetricsSnapshot as MetricsSnapshot) : null))
-      .filter((m): m is MetricsSnapshot => !!m);
-
-    const totalFiles = withMetrics.reduce((sum, m) => sum + m.totalFiles, 0);
-    const totalCycles = withMetrics.reduce((sum, m) => sum + m.circularDependencyCount, 0);
-    const avgHealth = withMetrics.length
-      ? Math.round(withMetrics.reduce((sum, m) => sum + m.healthScore, 0) / withMetrics.length)
-      : null;
-
-    return { repoCount: repos.length, totalFiles, totalCycles, avgHealth };
-  }, [repos]);
-
   return (
     <div className="min-h-screen bg-canvas">
       <Navbar />
-      <div className="container flex flex-col gap-10 py-10">
-        <div className="flex flex-col gap-5">
+      <div className="container flex flex-col gap-8 py-10">
+        <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Analyze a repository</h1>
-            <p className="mt-1 text-sm text-muted">
-              Paste a public GitHub URL to parse its AST and map its architecture.
-            </p>
+            <p className="mt-1 text-sm text-muted">Paste a public GitHub URL to map its architecture.</p>
           </div>
           <ImportRepoForm />
         </div>
-
-        {stats && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard icon={<FolderGit2 className="h-4 w-4" />} label="Repositories analyzed" value={String(stats.repoCount)} />
-            <StatCard icon={<GitBranch className="h-4 w-4" />} label="Files parsed" value={stats.totalFiles.toLocaleString()} />
-            <StatCard
-              icon={<Gauge className="h-4 w-4" />}
-              label="Average health score"
-              value={stats.avgHealth !== null ? String(stats.avgHealth) : '—'}
-            />
-            <StatCard
-              icon={<AlertTriangle className="h-4 w-4" />}
-              label="Circular dependencies found"
-              value={String(stats.totalCycles)}
-              accent="text-cycle"
-            />
-          </div>
-        )}
 
         <div>
           <h2 className="mb-4 text-sm font-medium text-muted">Your repositories</h2>

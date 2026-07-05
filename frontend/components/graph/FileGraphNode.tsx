@@ -1,6 +1,5 @@
 'use client';
 
-import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { FileCode2, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,7 +49,7 @@ function complexityColor(avg: number) {
   return 'text-grade-a';
 }
 
-function FileGraphNodeImpl({ data }: { data: FileGraphNodeData }) {
+export function FileGraphNode({ data }: { data: FileGraphNodeData }) {
   const focusActive = data.focusDistance !== undefined;
   const isFocalNode = data.focusDistance === 0;
   const dimmed = focusActive && data.focusDistance === -1;
@@ -61,7 +60,7 @@ function FileGraphNodeImpl({ data }: { data: FileGraphNodeData }) {
         title={`${data.filePath}\n${data.linesOfCode} LOC · avg complexity ${data.averageComplexity.toFixed(1)}`}
         style={{ borderLeft: `2px solid ${folderColor(data.filePath)}` }}
         className={cn(
-          'graph-node group relative max-w-[150px] rounded border bg-surface px-2 py-1 shadow-sm transition-[opacity,box-shadow] duration-200 ease-out',
+          'graph-node group relative max-w-[150px] rounded border bg-surface px-2 py-1 shadow-sm transition-opacity duration-150',
           data.inCycle ? 'border-cycle/60' : 'border-border-light',
           data.isEntryPoint && 'border-brand/60',
           isFocalNode && 'ring-2 ring-brand',
@@ -83,7 +82,7 @@ function FileGraphNodeImpl({ data }: { data: FileGraphNodeData }) {
     <div
       style={{ borderLeft: `3px solid ${folderColor(data.filePath)}` }}
       className={cn(
-        'graph-node group relative min-w-[180px] max-w-[220px] rounded-md border bg-surface px-3 py-2 shadow-sm transition-[opacity,box-shadow] duration-200 ease-out',
+        'graph-node group relative min-w-[180px] max-w-[220px] rounded-md border bg-surface px-3 py-2 shadow-sm transition-opacity duration-150',
         data.inCycle ? 'border-cycle/60 ring-1 ring-cycle/30' : 'border-border-light',
         data.isEntryPoint && 'border-brand/60 ring-1 ring-brand/30',
         isFocalNode && 'ring-2 ring-brand shadow-lg shadow-brand/20',
@@ -127,27 +126,3 @@ function FileGraphNodeImpl({ data }: { data: FileGraphNodeData }) {
     </div>
   );
 }
-
-// Memoized so hovering/focusing one node doesn't force every other node in a
-// 300-file graph to re-render each time the mouse moves — React Flow passes
-// each node a fresh `data` object by identity, so without this (plus the
-// reference-stabilizing cache in DependencyGraph) every mouse movement over
-// the canvas re-rendered the *entire* graph, which is what showed up as a
-// full-canvas flicker/blink on hover.
-export const FileGraphNode = memo(FileGraphNodeImpl, (prev, next) => {
-  const a = prev.data;
-  const b = next.data;
-  return (
-    a.filePath === b.filePath &&
-    a.fileName === b.fileName &&
-    a.language === b.language &&
-    a.averageComplexity === b.averageComplexity &&
-    a.linesOfCode === b.linesOfCode &&
-    a.inCycle === b.inCycle &&
-    a.isEntryPoint === b.isEntryPoint &&
-    a.compact === b.compact &&
-    a.focusDistance === b.focusDistance &&
-    a.isHoverNeighbor === b.isHoverNeighbor &&
-    a.onInfoClick === b.onInfoClick
-  );
-});

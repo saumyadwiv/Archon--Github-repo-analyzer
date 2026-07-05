@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, RotateCcw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Network, BarChart3, RotateCcw, Loader2, FileText } from 'lucide-react';
 import { RequireAuth } from '@/components/layout/RequireAuth';
 import { Navbar } from '@/components/layout/Navbar';
-import { RepoTabNav } from '@/components/layout/RepoTabNav';
 import { Button } from '@/components/ui/button';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatComposer } from '@/components/chat/ChatComposer';
@@ -18,9 +17,7 @@ import type { AIMessage, Repository } from '@/lib/types';
 
 function ChatPageContent() {
   const { repoId } = useParams<{ repoId: string }>();
-  const router = useRouter();
   const [repo, setRepo] = useState<Repository | null>(null);
-  const [reanalyzing, setReanalyzing] = useState(false);
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
@@ -127,17 +124,6 @@ function ChatPageContent() {
     }
   }
 
-  async function handleReanalyze() {
-    setReanalyzing(true);
-    try {
-      await repositoryApi.reanalyze(repoId);
-      router.push(`/dashboard/${repoId}`);
-    } catch (err) {
-      toast({ title: 'Could not start re-analysis', description: apiErrorMessage(err), variant: 'error' });
-      setReanalyzing(false);
-    }
-  }
-
   return (
     <div className="flex h-screen flex-col bg-canvas">
       <Navbar />
@@ -149,10 +135,24 @@ function ChatPageContent() {
           {repo && <span className="font-mono text-sm font-medium">{repo.fullName}</span>}
         </div>
         <div className="flex items-center gap-2">
+          <Link href={`/dashboard/${repoId}/graph`}>
+            <Button variant="outline" size="sm">
+              <Network className="h-3.5 w-3.5" /> Graph
+            </Button>
+          </Link>
+          <Link href={`/dashboard/${repoId}/metrics`}>
+            <Button variant="outline" size="sm">
+              <BarChart3 className="h-3.5 w-3.5" /> Metrics
+            </Button>
+          </Link>
+          <Link href={`/dashboard/${repoId}/readme`}>
+            <Button variant="outline" size="sm">
+              <FileText className="h-3.5 w-3.5" /> README
+            </Button>
+          </Link>
           <Button variant="ghost" size="sm" onClick={handleReset} disabled={messages.length === 0}>
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </Button>
-          <RepoTabNav repoId={repoId} active="chat" reanalyzing={reanalyzing} onReanalyze={handleReanalyze} />
         </div>
       </div>
 

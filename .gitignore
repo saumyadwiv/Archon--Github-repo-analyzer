@@ -8,7 +8,6 @@ node_modules/
 backend/.env
 frontend/.env.local
 
-
 # Next.js build output
 frontend/.next/
 frontend/out/

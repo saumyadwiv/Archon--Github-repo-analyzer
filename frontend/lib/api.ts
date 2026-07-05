@@ -3,7 +3,6 @@ import type {
   AIConversation,
   AIMessage,
   AnalysisJob,
-  Architecture,
   ApiResponse,
   CycleChain,
   DependencyEdge,
@@ -120,8 +119,6 @@ export const repositoryApi = {
     client.get<ApiResponse<{ history: MetricsHistoryPoint[] }>>(`/repositories/${id}/metrics/history`),
   cycles: (id: string) =>
     client.get<ApiResponse<{ cycles: CycleChain[] }>>(`/repositories/${id}/cycles`),
-  architecture: (id: string) =>
-    client.get<ApiResponse<{ architecture: Architecture }>>(`/repositories/${id}/architecture`),
 };
 
 // --- AI (Gemini) ---

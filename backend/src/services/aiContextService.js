@@ -1,5 +1,4 @@
 const { FileNode, DependencyEdge, MetricsSnapshot } = require('../models');
-const { buildArchitecture, renderArchitectureSummary } = require('./architectureService');
 
 // Repo-context strings are rebuilt from Mongo on cache miss and reused across
 // chat turns / explain calls for the same analysis run, keyed by analysisJob id.
@@ -27,7 +26,7 @@ async function getRepoContext(repository) {
 
   const [files, edges, metrics] = await Promise.all([
     FileNode.find({ analysisJob: repository.latestAnalysisJob }).select(
-      'filePath fileName language linesOfCode averageComplexity inCycle isEntryPoint functions parseError'
+      'filePath language linesOfCode averageComplexity inCycle isEntryPoint functions parseError'
     ),
     DependencyEdge.find({ analysisJob: repository.latestAnalysisJob }).select(
       'sourcePath targetPath isPartOfCycle cycleId'
@@ -85,13 +84,6 @@ function renderContext(repository, files, edges, metrics) {
         lines.push(`- ${f.filePath} (complexity ${f.complexity})`);
       });
     }
-  }
-
-  const architecture = buildArchitecture(files, edges);
-  const architectureSummary = renderArchitectureSummary(architecture);
-  if (architectureSummary) {
-    lines.push('');
-    lines.push(architectureSummary);
   }
 
   const cycleGroups = groupByCycle(edges);

@@ -17,17 +17,6 @@ body {
   color: theme('colors.foreground');
 }
 
-/* Subtle ambient depth instead of a flat black canvas — a couple of soft,
-   viewport-fixed radial glows in the brand color, applied directly to the
-   `bg-canvas` utility (rather than just `body`) since most pages render a
-   full-height `bg-canvas` wrapper that would otherwise paint over/hide it. */
-.bg-canvas {
-  background-image:
-    radial-gradient(ellipse 60% 40% at 15% -10%, rgba(110, 91, 255, 0.16), transparent 60%),
-    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(52, 211, 153, 0.06), transparent 60%);
-  background-attachment: fixed;
-}
-
 body {
   font-feature-settings: 'ss01' 1, 'cv01' 1;
 }
@@ -81,21 +70,12 @@ body {
   border-radius: 0.5rem;
 }
 .react-flow__edge-path {
-  stroke: #AAB2C5;
-  stroke-width: 2.25;
+  stroke: theme('colors.border-light');
+  stroke-width: 1.5;
 }
 .react-flow__edge.cycle-edge .react-flow__edge-path {
   stroke: theme('colors.cycle.DEFAULT');
   stroke-width: 2;
-}
-.react-flow__edge.violation-edge .react-flow__edge-path {
-  stroke: theme('colors.cycle.DEFAULT');
-  stroke-dasharray: 6 4;
-}
-.react-flow__edge.lateral-edge .react-flow__edge-path {
-  stroke: theme('colors.border-light');
-  stroke-dasharray: 3 3;
-  opacity: 0.7;
 }
 .react-flow__attribution {
   display: none;

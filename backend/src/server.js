@@ -5,6 +5,7 @@ const app = require('./app');
 const { connectDB } = require('./config/database');
 const { getRedisConnection } = require('./config/redis');
 const { initSocket } = require('./config/socket');
+const { startWorker } = require('./jobs/worker');
 
 async function main() {
   await connectDB();
@@ -24,9 +25,22 @@ async function main() {
     logger.info(`Archon API listening on port ${env.port} [${env.nodeEnv}]`);
   });
 
+  // Free-tier hosts that only offer one long-running process type (e.g.
+  // Render's free plan has no Background Worker service — see README) can
+  // set RUN_WORKER_INLINE=true to run the BullMQ consumer in this same
+  // process instead of `npm run worker` as a separate service. Fine for a
+  // low-traffic personal deployment; once you can afford a dedicated worker,
+  // unset this and run `npm run worker` separately so CPU-heavy analysis
+  // jobs don't compete with the API for the same event loop.
+  let worker = null;
+  if (process.env.RUN_WORKER_INLINE === 'true') {
+    worker = startWorker();
+  }
+
   const shutdown = async (signal) => {
     logger.info(`${signal} received, shutting down gracefully...`);
     server.close(() => logger.info('HTTP server closed'));
+    if (worker) await worker.close().catch(() => {});
     await redis.quit().catch(() => {});
     process.exit(0);
   };

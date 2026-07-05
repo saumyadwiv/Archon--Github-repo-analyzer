@@ -1,0 +1,38 @@
+version: '3.8'
+
+# Local dev infra for Archon. Runs MongoDB + Redis only — the API server,
+# worker, and Next.js frontend still run on the host via `npm run dev` /
+# `npm run worker` (see README "Quick start"). This keeps hot-reload fast
+# and avoids rebuilding app images on every change.
+services:
+  mongo:
+    image: mongo:7
+    container_name: archon-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - archon-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: archon-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - archon-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  archon-mongo-data:
+  archon-redis-data:

@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🧠 Archon
+<img src="./frontend/public/icon.png" alt="Archon Logo" width="72"/>
+
+# Archon
 ### AI-Powered Codebase Intelligence Platform
 **Paste a repo URL → get a dependency graph, a health score, and an AI that actually knows your architecture.**
 
@@ -83,34 +85,54 @@ You never wait on a spinner and hope — every stage above streams live over Soc
 
 ---
 
-## 📸 Product Walkthrough
+## 🧭 Product Walkthrough
 
 ### 1. Landing Page
-The pitch, up front: *"See the architecture hiding in any repo."* A live terminal-style preview shows Archon mid-analysis on `facebook/react` — circular import flagged, health grade, file count — updating in real time.
+See a live example of Archon analyzing a real repo before you even sign up.
+
+![Landing Page](./docs/screenshots/landing-page.png)
 
 ### 2. Sign Up / Sign In
-Email + password or **Continue with Google**. The signup screen reinforces the value prop before the form: real AST parsing (not regex), a 0–100 health grade per repo, and an AI that already knows the codebase graph.
+Get started in seconds with email or Google — no long forms.
+
+![Sign Up](./docs/screenshots/signup.png)
 
 ### 3. Dashboard
-Paste a public GitHub URL and hit **Analyze**. Top-line stats — repositories analyzed, files parsed, average health score, circular dependencies found — sit above a grid of your past repos, each tagged with its health grade and status (`Completed` / `Failed`) plus a cycle-count badge where relevant.
+Drop in a repo link and see all your past analyses in one place.
+
+![Dashboard](./docs/screenshots/dashboard.png)
 
 ### 4. Dependency Graph
-The core visualization: React Flow with a **Tree / Force / Folders** layout switcher, a minimap, and click-to-focus on any node to isolate its direct neighbors. Circular dependencies and entry points are called out in the legend, and hovering a file surfaces an AI explanation on demand.
+An interactive map of your codebase — explore it visually and spot risky connections at a glance.
+
+![Dependency Graph](./docs/screenshots/dependency-graph.png)
 
 ### 5. Architecture View
-The same repo, sliced a different way — files bucketed into responsibility layers (Components, Pages, Cross-cutting, etc.) rather than folders, with dotted/solid edges showing expected flow vs. layering violations. Click a layer to see its files; click an edge to see the imports driving it.
+See how your project is organized by role, not just by folder — great for spotting messy structure.
+
+![Architecture View](./docs/screenshots/architecture-view.png)
 
 ### 6. AI Chat
-A repo-scoped chat with Gemini, pre-loaded with suggested prompts ("What are the most complex files, and why?", "Explain the circular dependencies you found") — because Gemini already has the dependency graph, complexity metrics, and health score for that exact analysis.
+Ask questions about your codebase in plain English and get answers that actually make sense.
+
+![AI Chat](./docs/screenshots/ai-chat.png)
 
 ### 7. Metrics
-A health-score gauge broken into its four weighted components (Complexity, Circular deps, File size, Structure), headline stats (total files, LOC, functions, avg complexity, dependency edges), and a health-score-history line chart across re-analyses.
+A simple, visual snapshot of your codebase's health — what's working and what needs attention.
+
+![Metrics](./docs/screenshots/metrics.png)
 
 ### 8. File Breakdown
-A "most complex files" bar chart (color-graded from calm purple to warning red) plus a filterable, sortable table — file path, LOC, average and total complexity, and flags — so you know exactly which files to open first.
+Instantly see which parts of your codebase are the most complex.
+
+![File Breakdown](./docs/screenshots/file-breakdown.png)
 
 ### 9. AI README Generator
-One click generates a full README for the analyzed repo — tech stack, project structure, the works — grounded in the real analysis. **Regenerate**, **Copy**, or **Download README.md**, or use the **Refine with AI** panel to ask Gemini for edits in plain English and watch the draft update in place.
+Generate a polished README in one click, then just ask the AI to tweak it however you like.
+
+![README Generator](./docs/screenshots/readme-generator.png)
+
+> **Adding your own screenshots:** drop image files into `docs/screenshots/`, then reference them anywhere in this README with `![Alt text](./docs/screenshots/your-image.png)`. That's it — GitHub renders them automatically.
 
 ---
 
@@ -203,7 +225,7 @@ sequenceDiagram
 
 ---
 
-## 📐 Health Score Formula
+## ⚖️ Health Score Formula
 
 Archon doesn't just count lines — it weighs the things that actually predict "this repo is painful to work in":
 

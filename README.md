@@ -4,6 +4,10 @@
 ### AI-Powered Codebase Intelligence Platform
 **Paste a repo URL → get a dependency graph, a health score, and an AI that actually knows your architecture.**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-archon--github--repo--analyzer--1.onrender.com-8b5cf6?style=for-the-badge)](https://archon-github-repo-analyzer-1.onrender.com)
+
+<br/>
+
 ![Node](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js)
 ![Next.js](https://img.shields.io/badge/Next.js-14%20App%20Router-000000?style=flat-square&logo=next.js)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb)
@@ -11,6 +15,7 @@
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-Real--time-010101?style=flat-square&logo=socket.io)
 ![Gemini](https://img.shields.io/badge/Gemini%20API-AI%20Engine-4285F4?style=flat-square&logo=googlegemini)
 ![React Flow](https://img.shields.io/badge/React%20Flow-Graph%20Viz-FF0072?style=flat-square)
+![Render](https://img.shields.io/badge/Render-Deployed-46E3B7?style=flat-square&logo=render)
 
 </div>
 
@@ -30,55 +35,82 @@ Every engineer has opened a repo they didn't write and asked the same three ques
 
 ## 💡 What Archon Does
 
-### Core Pipeline: Clone → Parse → Graph → Score → Chat
+<div align="center">
 
-```
-Paste a GitHub URL
-        │
-        ▼
-Shallow clone (size-capped) via simple-git
-        │
-        ▼
-Walk every .js/.jsx/.ts/.tsx/.mjs/.cjs/.py file (node_modules/dist/venv excluded, 3000-file cap)
-        │
-        ▼
-AST parse — @babel/parser+traverse (JS/TS) · Python's ast module via subprocess (.py)
-        │
-        ▼
-Extract imports, exports, functions, per-function McCabe cyclomatic complexity
-        │
-        ▼
-Resolve import specifiers → build the DependencyEdge graph
-        │
-        ▼
-DFS cycle detection (white/gray/black) → circular dependencies flagged
-        │
-        ▼
-Weighted 0–100 health score (complexity 40 / cycles 30 / file size 15 / parse errors 15) → A–F grade
-        │
-        ▼
-🤖 Chat with Gemini — grounded in your repo's actual graph, cycles, and complexity
-```
+| Step | Stage | What happens |
+|:---:|---|---|
+| 1️⃣ | 📥 **Import** | Paste a GitHub URL — Archon shallow-clones it in the background (size-capped) |
+| 2️⃣ | 🧬 **Parse** | Every `.js/.jsx/.ts/.tsx/.mjs/.cjs/.py` file is parsed like a compiler would — real AST, not regex |
+| 3️⃣ | 🕸️ **Graph** | Imports/exports resolve into a dependency graph — core files, leaf files, module clusters |
+| 4️⃣ | 🔁 **Detect** | DFS cycle detection flags every circular dependency, even across disconnected subgraphs |
+| 5️⃣ | 📊 **Score** | Cyclomatic complexity + cycles + file size + structure roll up into a 0–100 health grade |
+| 6️⃣ | 🤖 **Explain & Chat** | Click a file for an AI explanation, or ask Gemini anything — it already knows the graph |
 
-Every stage streams live over Socket.IO, so the frontend shows a real progress bar — cloning → parsing → graph building → cycle detection → scoring — instead of a spinner and a prayer.
+</div>
+
+You never wait on a spinner and hope — every stage above streams live over Socket.IO straight into a real progress bar (*"Parsing file 340/1200…"*) while a BullMQ background worker does the actual work off the request thread.
 
 ---
 
 ## 🧩 Features
 
+**Core pipeline**
+
 | Feature | Description |
 |---|---|
-| 🕸️ **Real AST-Based Dependency Graph** | Not a regex guess — actual Babel/Python AST parsing resolves real import specifiers into a graph |
-| 🔁 **Circular Dependency Detection** | DFS with three-color marking finds cycles across disconnected subgraphs, even in large repos |
-| 📊 **0–100 Health Score** | Weighted score from complexity, cycles, file size, and parse-error rate, with an A–F letter grade |
-| ⚡ **Live Analysis Progress** | Socket.IO streams clone → parse → graph → cycles → score stage-by-stage, with a polling fallback |
-| 🗺️ **Interactive Dependency Graph** | React Flow + dagre auto-layout, red pulsing edges on circular dependencies, click-to-inspect any file |
-| 🤖 **"Explain with AI"** | Click any file → Gemini explains it using its real imports/importers from the graph, not a summary of the filename |
-| 💬 **Repo-Aware Chat** | Ask Gemini about your architecture; answers are grounded in a compact, token-budgeted summary of the actual analysis |
-| 🌊 **Streaming Chat** | Socket.IO token-by-token streaming with a non-streaming REST fallback — same persistence path either way |
-| 📈 **Complexity & File Breakdown** | Per-file cyclomatic complexity bar chart (Recharts) + a sortable, filterable file table |
-| 🔒 **Full Auth** | Email/password + Google OAuth, JWT access + refresh tokens, cookie handling |
-| 🐍 **Python Support, Not Just JS** | Python files are parsed with the real `ast` stdlib module, not skipped or best-guessed |
+| 🔐 **Full Auth** | Email/password *or* "Continue with Google" — every user's repos, jobs, and chats are tied to their account in MongoDB |
+| 📥 **GitHub Import** | Paste a repo URL — Archon clones it in the background and kicks off analysis without blocking your browser |
+| 🧬 **Real AST Parsing** | Reads code like a compiler: functions, exports, imports, class extension — the foundation everything else is built on. JS/TS via Babel, **Python via the real stdlib `ast` module**, not skipped or best-guessed |
+| 🕸️ **Dependency Graph** | A visual map of every file-to-file connection — core files, leaf files, and whole module clusters, instantly visible |
+| 🔁 **Circular Dependency Detection** | Finds every cycle (A→B→A, even through longer chains) and highlights it in red on the graph |
+| 📈 **Cyclomatic Complexity Analysis** | Every function scored on how many paths it can take — 1 is simple, 20+ is a mess Archon will point you straight at |
+| 📊 **Metrics Dashboard** | Health score (0–100), complexity breakdown, circular dependency count, and a **history chart** that tracks the score across re-analyses |
+| 🤖 **AI Architecture Explanations** | Click any file → Gemini explains it in plain English, grounded in its real imports/importers from the graph |
+| 💬 **AI Chat Over the Codebase** | Ask *"why does AuthService depend on UserRepository?"* — Gemini has full context of the graph and answers specific to *your* repo |
+| ⚡ **Async Analysis, Real-Time Updates** | Large repos run as BullMQ background jobs; the browser gets live WebSocket progress instead of a blocking request |
+| 🔄 **Re-Analyze** | Re-run analysis after you've changed the code and watch the health score move |
+
+**Visualization & AI extras**
+
+| Feature | Description |
+|---|---|
+| 🗺️ **Multiple Graph Layouts** | Switch between **Tree** (hierarchical, best for small repos), **Force** (d3-force, clusters tightly-coupled modules), and **Folders** view — pick the shape that fits the repo |
+| 🎯 **Focus / Isolation Mode** | Click a file to dim everything except its direct neighbors; click again (or an empty spot) to clear — built for exploring graphs with hundreds of nodes |
+| 🧭 **Architecture (Layer) View** | Files grouped by *responsibility* (Pages, Components, Services, Cross-cutting…) instead of folder, with edges marked **Expected flow**, **Violates layering**, or **Cross-cutting** — click a layer for its files, click an edge for the imports behind it |
+| 🔍 **AI Cycle Explanations** | Hover or click a flagged cycle for a dedicated Gemini prompt explaining *why* it likely exists and which import to invert to break it |
+| 📄 **AI README Generator** | Generate a full README for the analyzed repo from its real graph + metrics, **Regenerate**, **Copy**, or **Download README.md** — and refine it conversationally ("shorten the tech stack section," "add a badges row") with changes applied in place |
+| 📉 **Most-Complex-Files Chart + Sortable Table** | A bar chart of the worst offenders, plus a filterable, sortable file table (LOC, avg/total complexity, flags) |
+
+---
+
+## 📸 Product Walkthrough
+
+### 1. Landing Page
+The pitch, up front: *"See the architecture hiding in any repo."* A live terminal-style preview shows Archon mid-analysis on `facebook/react` — circular import flagged, health grade, file count — updating in real time.
+
+### 2. Sign Up / Sign In
+Email + password or **Continue with Google**. The signup screen reinforces the value prop before the form: real AST parsing (not regex), a 0–100 health grade per repo, and an AI that already knows the codebase graph.
+
+### 3. Dashboard
+Paste a public GitHub URL and hit **Analyze**. Top-line stats — repositories analyzed, files parsed, average health score, circular dependencies found — sit above a grid of your past repos, each tagged with its health grade and status (`Completed` / `Failed`) plus a cycle-count badge where relevant.
+
+### 4. Dependency Graph
+The core visualization: React Flow with a **Tree / Force / Folders** layout switcher, a minimap, and click-to-focus on any node to isolate its direct neighbors. Circular dependencies and entry points are called out in the legend, and hovering a file surfaces an AI explanation on demand.
+
+### 5. Architecture View
+The same repo, sliced a different way — files bucketed into responsibility layers (Components, Pages, Cross-cutting, etc.) rather than folders, with dotted/solid edges showing expected flow vs. layering violations. Click a layer to see its files; click an edge to see the imports driving it.
+
+### 6. AI Chat
+A repo-scoped chat with Gemini, pre-loaded with suggested prompts ("What are the most complex files, and why?", "Explain the circular dependencies you found") — because Gemini already has the dependency graph, complexity metrics, and health score for that exact analysis.
+
+### 7. Metrics
+A health-score gauge broken into its four weighted components (Complexity, Circular deps, File size, Structure), headline stats (total files, LOC, functions, avg complexity, dependency edges), and a health-score-history line chart across re-analyses.
+
+### 8. File Breakdown
+A "most complex files" bar chart (color-graded from calm purple to warning red) plus a filterable, sortable table — file path, LOC, average and total complexity, and flags — so you know exactly which files to open first.
+
+### 9. AI README Generator
+One click generates a full README for the analyzed repo — tech stack, project structure, the works — grounded in the real analysis. **Regenerate**, **Copy**, or **Download README.md**, or use the **Refine with AI** panel to ask Gemini for edits in plain English and watch the draft update in place.
 
 ---
 
@@ -87,7 +119,7 @@ Every stage streams live over Socket.IO, so the frontend shows a real progress b
 ```mermaid
 flowchart TB
     subgraph CLIENT["🖥️ Frontend — Next.js 14 App Router"]
-        UI[Dashboard / Graph / Metrics / Chat]
+        UI[Dashboard / Graph / Architecture / Metrics / Chat / README]
         SOCKETC[Socket.IO Client]
         UI <--> SOCKETC
     end
@@ -101,7 +133,7 @@ flowchart TB
         AST[AST Parsers — Babel JS/TS · Python ast]
         GRAPH[Dependency Graph + Cycle Detection]
         HEALTH[Health Score Service]
-        AI[Gemini Service — explain + chat]
+        AI[Gemini Service — explain + chat + README gen]
 
         API --> QUEUE --> WORKER
         WORKER --> GIT --> AST --> GRAPH --> HEALTH
@@ -119,7 +151,7 @@ flowchart TB
     UI -->|paste repo URL| API
     WORKER <-->|persist FileNode, DependencyEdge, MetricsSnapshot| MONGO
     QUEUE <--> REDIS
-    AI <-->|explain + chat, grounded in repo context| GEMINI
+    AI <-->|explain + chat + README, grounded in repo context| GEMINI
 
     style CLIENT fill:#0d1117,stroke:#818cf8,color:#ffffff
     style SERVER fill:#0d1117,stroke:#4285F4,color:#ffffff
@@ -180,9 +212,9 @@ Archon doesn't just count lines — it weighs the things that actually predict "
 | **Cyclomatic complexity** | 40 pts | Functions with too many branches/decision points |
 | **Circular dependencies** | 30 pts | Modules that depend on each other in a loop |
 | **File size** | 15 pts | Files that have grown into unmanageable god-files |
-| **Parse errors** | 15 pts | Structural issues that broke AST parsing |
+| **Structure / parse errors** | 15 pts | Structural issues that broke AST parsing |
 
-The result is a single 0–100 score and an A–F grade — something you can watch trend over time as a codebase evolves.
+The result is a single 0–100 score and an A–F grade, tracked over time on a history chart every time you re-analyze.
 
 ---
 
@@ -196,32 +228,47 @@ The result is a single 0–100 score and an A–F grade — something you can wa
 - `@babel/parser` + `@babel/traverse` — JS/TS AST analysis
 - Python `ast` module (invoked as a subprocess) — Python AST analysis
 - `simple-git` — size-capped shallow cloning
-- `@google/generative-ai` (Gemini) — file explanations + repo chat
+- `@google/generative-ai` (Gemini) — file explanations, repo chat, README generation
 
 **Frontend**
 - Next.js 14 (App Router) + TypeScript
 - Tailwind CSS + shadcn/ui-style primitives (Radix)
-- React Flow + dagre — interactive, auto-laid-out dependency graphs
-- Recharts — complexity visualizations
+- React Flow + dagre + d3-force — Tree / Force / Folders graph layouts
+- Recharts — complexity charts, health score history
 - Zustand — client state
-- Socket.IO client + `react-markdown` for streamed, formatted chat
-
-**Deployment**
-- Backend + worker → Render (or any Node host)
-- Frontend → Render / Vercel
-- MongoDB Atlas, Redis (Render Key Value or self-hosted)
-- `docker-compose.yml` provided for local Mongo + Redis
+- Socket.IO client + `react-markdown` for streamed, formatted chat and README rendering
 
 ---
 
-## 🌐 Demo Flow
+## 🚀 Deployment
 
-1. Register (or sign in with Google) → land on the **Dashboard**
-2. Paste a repo URL — e.g. `https://github.com/expressjs/express` → **Import**
-3. Watch the live progress bar: clone → parse → graph → cycles → score
-4. Land on the **Dependency Graph** — pan/zoom, click a node, hit **Explain with AI**
-5. Check **Metrics** — health score gauge, complexity chart, sortable file table
-6. Open **Chat** and ask it something like *"which file has the most circular dependencies?"*
+Archon runs fully on **Render** — both the frontend (static/web service) and the backend API are deployed there, with MongoDB Atlas and a Render Redis instance backing them.
+
+| Piece | How |
+|---|---|
+| **Backend + Frontend** | Both deployed as Render Web Services, deploying straight from `main` |
+| **CI** | **GitHub Actions** runs on every push — lint/build checks before Render picks up the deploy |
+| **Uptime** | **UptimeRobot** pings the backend on an interval to prevent Render's free-tier services from spinning down on idle, so the live demo doesn't cold-start on you |
+| **Worker** | On Render's free tier (no separate background worker service), `RUN_WORKER_INLINE=true` runs the BullMQ consumer inside the API process instead of a standalone process |
+| **Database / Queue** | MongoDB Atlas (M0) + Render Redis (Key Value) |
+
+---
+
+## 🌐 Live Demo
+
+🔗 **[archon-github-repo-analyzer-1.onrender.com](https://archon-github-repo-analyzer-1.onrender.com)**
+
+**Try it yourself:**
+1. Sign up (email/password or Google) → land on the **Dashboard**
+2. Paste any public repo URL — e.g. `https://github.com/jasontaylordev/CleanArchitecture` → **Analyze**
+3. Watch the live progress bar walk through clone → parse → graph → cycles → score
+4. Explore the **Graph** (switch between Tree / Force / Folders, click a file to focus its neighbors)
+5. Check the **Architecture** view to see the repo grouped by responsibility layer instead of folder
+6. Open **Metrics** for the health score breakdown, complexity chart, and file table
+7. Ask the **Chat** something like *"where would you start refactoring to improve the health score?"*
+8. Generate a **README** for the repo, then refine it with a plain-English instruction
+
+> First load on the free tier may take a few seconds if UptimeRobot's last ping was a while ago — subsequent requests are fast.
 
 ---
 
@@ -245,7 +292,7 @@ Open **http://localhost:3000**, register, and paste a GitHub URL to see the full
 
 Requires **Docker** (or your own Mongo/Redis) and **`python3` on PATH** (used by the backend for `.py` AST parsing).
 
-To enable AI features (`/ai/explain`, `/ai/chat`), set `GEMINI_API_KEY` in `backend/.env` (get one from [Google AI Studio](https://aistudio.google.com/app/apikey)). Without it, those two endpoints return a 503 — everything else (import, analysis, graph, metrics) works independently of Gemini.
+To enable AI features (explain, chat, README generation), set `GEMINI_API_KEY` in `backend/.env` (get one from [Google AI Studio](https://aistudio.google.com/app/apikey)). Without it, AI endpoints return a 503 — everything else (import, analysis, graph, metrics) works independently of Gemini.
 
 > On free-tier hosts with no separate background worker (e.g. Render's free plan), set `RUN_WORKER_INLINE=true` to run the BullMQ consumer inside the API process instead of a standalone `npm run worker`.
 
@@ -257,7 +304,7 @@ To enable AI features (`/ai/explain`, `/ai/chat`), set `GEMINI_API_KEY` in `back
 | `REDIS_URL` / `REDIS_HOST`+`REDIS_PORT`+`REDIS_PASSWORD` | Redis connection for BullMQ + Socket.IO adapter |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` | Access + refresh token signing secrets |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth credentials |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | Gemini API key + model for AI explain/chat |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | Gemini API key + model for AI explain/chat/README |
 | `CLONE_TMP_DIR` / `MAX_REPO_SIZE_MB` | Where repos are cloned + the size cap |
 | `RUN_WORKER_INLINE` | Run the analysis worker inside the API process (free-tier hosting) |
 
@@ -267,36 +314,54 @@ To enable AI features (`/ai/explain`, `/ai/chat`), set `GEMINI_API_KEY` in `back
 
 ```
 archon/
-  docker-compose.yml    Mongo + Redis for local dev
-  backend/
-    src/
-      config/       env, logger, database, redis, passport, socket
-      models/        User, Repository, AnalysisJob, FileNode, DependencyEdge, MetricsSnapshot, AIConversation
-      controllers/    authController, repositoryController, aiController
-      routes/         authRoutes, repositoryRoutes, aiRoutes, healthRoutes
-      services/       gitService, fileDiscoveryService, astParserService,
-                       complexityCalculator, pythonParserService,
-                       dependencyGraphService, cycleDetectionService,
-                       healthScoreService, progressService, analysisService,
-                       geminiService, aiContextService, aiChatService
-      jobs/          queues.js (enqueueAnalysis), worker.js (BullMQ Worker)
-      middleware/    auth, errorHandler, validate, rateLimiter
-    scripts/         parse_python_ast.py
-  frontend/
-    app/
-      page.tsx                            landing page
-      login/, register/, auth/callback/   auth flow
-      dashboard/                          import form + repo grid
-      dashboard/[repoId]/graph/           React Flow dependency graph
-      dashboard/[repoId]/metrics/         health score + charts + file table
-      dashboard/[repoId]/chat/            repo-aware Gemini chat (streaming)
-    components/
-      ui/          shadcn-style primitives (button, card, dialog, tabs, toast, ...)
-      dashboard/   GraphBackdrop, ImportRepoForm, RepoCard, AnalysisProgress
-      graph/       FileGraphNode, graphLayout (dagre), DependencyGraph, FileExplainDialog
-      metrics/     HealthScoreGauge, ComplexityChart, FileBreakdownTable
-      chat/        ChatBubble, ChatComposer, ChatEmptyState
-    lib/           api.ts, socket.ts, auth-context.tsx, types.ts, utils.ts
+├── docker-compose.yml        Mongo + Redis for local dev
+├── backend/
+│   ├── src/
+│   │   ├── config/           env, logger, database, redis, passport, socket
+│   │   ├── models/           User, Repository, AnalysisJob, FileNode, DependencyEdge, MetricsSnapshot, AIConversation
+│   │   ├── controllers/      authController, repositoryController, aiController
+│   │   ├── routes/           authRoutes, repositoryRoutes, aiRoutes, healthRoutes
+│   │   ├── services/
+│   │   │   ├── gitService.js             shallow clone
+│   │   │   ├── fileDiscoveryService.js   walk + filter repo files
+│   │   │   ├── astParserService.js       Babel AST (JS/TS)
+│   │   │   ├── complexityCalculator.js   McCabe cyclomatic complexity
+│   │   │   ├── pythonParserService.js    Python ast subprocess
+│   │   │   ├── dependencyGraphService.js resolve imports → graph
+│   │   │   ├── cycleDetectionService.js  DFS circular dependency detection
+│   │   │   ├── healthScoreService.js     0–100 weighted score + grade
+│   │   │   ├── progressService.js        Socket.IO progress emitter
+│   │   │   ├── analysisService.js        orchestrates the full pipeline
+│   │   │   ├── geminiService.js          explain + chat + README generation
+│   │   │   ├── aiContextService.js       token-budgeted repo context builder
+│   │   │   └── aiChatService.js          shared REST + socket chat logic
+│   │   ├── jobs/
+│   │   │   ├── queues.js                 enqueueAnalysis()
+│   │   │   └── worker.js                 BullMQ Worker
+│   │   └── middleware/       auth, errorHandler, validate, rateLimiter
+│   ├── scripts/
+│   │   └── parse_python_ast.py
+│   └── package.json, .env.example, .gitignore
+└── frontend/
+    ├── app/
+    │   ├── page.tsx                            landing page
+    │   ├── login/, register/, auth/callback/   auth flow
+    │   ├── dashboard/                          import form + repo grid
+    │   └── dashboard/[repoId]/
+    │       ├── graph/                          React Flow dependency graph (Tree/Force/Folders)
+    │       ├── architecture/                   layer-based responsibility view
+    │       ├── metrics/                        health score + charts + file table
+    │       ├── chat/                           repo-aware Gemini chat (streaming)
+    │       └── readme/                          AI README generator + Refine with AI
+    ├── components/
+    │   ├── ui/          shadcn-style primitives (button, card, dialog, tabs, toast, ...)
+    │   ├── dashboard/   GraphBackdrop, ImportRepoForm, RepoCard, AnalysisProgress
+    │   ├── graph/       FileGraphNode, graphLayout (dagre/force), DependencyGraph, FileExplainDialog
+    │   ├── architecture/ LayerNode, LayerEdge, ArchitectureGraph
+    │   ├── metrics/     HealthScoreGauge, ComplexityChart, FileBreakdownTable
+    │   └── chat/        ChatBubble, ChatComposer, ChatEmptyState
+    ├── lib/             api.ts, socket.ts, auth-context.tsx, types.ts, utils.ts
+    └── package.json, tailwind.config.js, tsconfig.json, .env.local.example
 ```
 
 ---
@@ -321,6 +386,8 @@ archon/
 | POST | `/api/ai/chat` | Send a chat message (non-streaming) |
 | GET | `/api/ai/chat/:repositoryId` | Fetch (or lazily create) the ongoing chat thread |
 | DELETE | `/api/ai/chat/:repositoryId` | Clear the chat thread |
+| POST | `/api/ai/readme` | Generate a README from the repo's latest analysis |
+| POST | `/api/ai/readme/refine` | Apply a plain-English edit instruction to the generated README |
 
 Socket.IO (same JWT-authenticated connection):
 

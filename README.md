@@ -1,8 +1,7 @@
 <div align="center">
 
-<img src="./frontend/public/icon.png" alt="Archon Logo" width="72"/>
+<img src="./frontend/public/icon.png" alt="Archon Logo" width="120"/>
 
-# Archon
 ### AI-Powered Codebase Intelligence Platform
 **Paste a repo URL → get a dependency graph, a health score, and an AI that actually knows your architecture.**
 
